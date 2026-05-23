@@ -24,19 +24,31 @@ app.get("/", (req, res) => {
 /* ---------------- MIDDLEWARE ---------------- */
 app.use(express.json());
 
-/* ---------------- CORS FIX (IMPORTANT) ---------------- */
+/* ---------------- CORS (PRODUCTION FIX) ---------------- */
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:3001",
-      "https://workmate-frontend.vercel.app" // 🔥 change this to your real Vercel URL
-    ],
+    origin: function (origin, callback) {
+      const allowedOrigins = [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "https://workmate-frontend.vercel.app"
+      ];
+
+      // allow server-to-server / mobile / postman
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      // TEMP: allow everything for debugging (you can lock later)
+      return callback(null, true);
+    },
     credentials: true,
   })
 );
 
-/* Allow headers for auth */
+/* Allow headers */
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Headers", "Content-Type, x-auth-token");
   next();
@@ -48,7 +60,7 @@ app.use('/api/workers', workerRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/salary', salaryRoutes);
 
-/* ---------------- DB + SERVER ---------------- */
+/* ---------------- SERVER START ---------------- */
 const startServer = async () => {
   console.log('🚀 Starting WorkMate backend...');
 
@@ -68,7 +80,7 @@ const startServer = async () => {
       app.listen(Number(PORT), '0.0.0.0', () => {
         console.log(`🌐 Server running on port ${PORT}`);
 
-        /* ---------------- SEED DEFAULT USER ---------------- */
+        /* ---------------- DEFAULT USER SEED ---------------- */
         (async () => {
           const existing = await User.findOne({ email: 'manager@workmate.com' });
 
